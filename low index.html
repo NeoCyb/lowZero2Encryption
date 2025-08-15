@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Zero2 Encryption</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+        color: #f0f0f0;
+        margin: 0;
+        padding: 0;
+    }
+    header {
+        display: flex;
+        justify-content: center;
+        background: #111;
+        padding: 1rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    header button {
+        background: #333;
+        border: none;
+        padding: 0.7rem 1.2rem;
+        color: #fff;
+        margin: 0 0.5rem;
+        cursor: pointer;
+        border-radius: 6px;
+        font-weight: bold;
+        transition: 0.2s;
+    }
+    header button:hover {
+        background: #555;
+    }
+    .section {
+        display: none;
+        padding: 1rem 2rem;
+        max-width: 800px;
+        margin: 2rem auto;
+        background: #222;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    }
+    .section.active {
+        display: block;
+    }
+    textarea {
+        width: 100%;
+        height: 160px;
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 5px;
+        border: none;
+        background: #333;
+        color: #fff;
+        resize: vertical;
+    }
+    .controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+    button.copy, button.paste {
+        background: #444;
+        border: none;
+        padding: 0.3rem 0.6rem;
+        cursor: pointer;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 0.9rem;
+    }
+    .preview img, .preview video {
+        max-width: 100%;
+        margin-top: 1rem;
+        border-radius: 6px;
+    }
+    input[type="file"], input[type="password"] {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 5px;
+        border: none;
+        background: #333;
+        color: #fff;
+        margin-bottom: 0.5rem;
+    }
+    button.action {
+        background: #4CAF50;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 0.5rem;
+    }
+    button.action:hover {
+        background: #45a049;
+    }
+</style>
+</head>
+<body>
+<header>
+    <button onclick="showSection('encrypt')">Encrypt</button>
+    <button onclick="showSection('decrypt')">Decrypt</button>
+</header>
+
+<section id="encrypt" class="section active">
+    <h2>Encrypt</h2>
+    <input type="file" id="encFile">
+    <input type="password" id="encPass" placeholder="Enter password">
+    <button class="action" onclick="encryptFile()">Encrypt</button>
+    <div class="controls">
+        <label>Encrypted Output:</label>
+        <button class="copy" onclick="copyEncrypted()">📋 Copy</button>
+    </div>
+    <textarea id="encOutput" readonly></textarea>
+</section>
+
+<section id="decrypt" class="section">
+    <h2>Decrypt</h2>
+    <input type="file" id="decFile">
+    <input type="password" id="decPass" placeholder="Enter password">
+    <div class="controls">
+        <label>Encrypted Input:</label>
+        <button class="paste" onclick="pasteEncrypted()">📋 Paste</button>
+    </div>
+    <textarea id="decInput"></textarea>
+    <button class="action" onclick="decryptFile()">Decrypt</button>
+    <div class="preview" id="preview"></div>
+</section>
+
+<script>
+function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+function copyEncrypted() {
+    navigator.clipboard.writeText(document.getElementById('encOutput').value);
+}
+
+async function pasteEncrypted() {
+    let text = await navigator.clipboard.readText();
+    document.getElementById('decInput').value = text;
+}
+
+function encryptFile() {
+    let file = document.getElementById('encFile').files[0];
+    if (!file) return alert('No file selected');
+    let pass = document.getElementById('encPass').value;
+    if (!pass) return alert('No password entered');
+    let sizeLimit = getSizeLimit(file.type);
+    if (file.size > sizeLimit) return alert('File exceeds size limit');
+    let reader = new FileReader();
+    reader.onload = function() {
+        let encrypted = btoa(reader.result + '::' + pass);
+        document.getElementById('encOutput').value = encrypted;
+    }
+    reader.readAsDataURL(file);
+}
+
+function decryptFile() {
+    let data = document.getElementById('decInput').value;
+    let pass = document.getElementById('decPass').value;
+    try {
+        let decoded = atob(data);
+        let [fileData, key] = decoded.split('::');
+        if (key !== pass) return alert('Wrong password');
+        let preview = document.getElementById('preview');
+        preview.innerHTML = '';
+        if (fileData.startsWith('data:image')) {
+            preview.innerHTML = `<img src="${fileData}">`;
+        } else if (fileData.startsWith('data:video')) {
+            preview.innerHTML = `<video controls src="${fileData}"></video>`;
+        } else {
+            let link = document.createElement('a');
+            link.href = fileData;
+            link.download = 'decrypted_file';
+            link.textContent = 'Download file';
+            preview.appendChild(link);
+        }
+    } catch (e) {
+        alert('Invalid data or password');
+    }
+}
+
+function getSizeLimit(type) {
+    if (type.startsWith('image/')) return 20 * 1024 * 1024;
+    if (type.startsWith('video/')) return 50 * 1024 * 1024;
+    return 30 * 1024 * 1024;
+}
+</script>
+</body>
+</html>
